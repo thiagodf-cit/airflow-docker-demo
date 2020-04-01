@@ -74,8 +74,8 @@ RUN set -ex \
         /usr/share/doc \
         /usr/share/doc-base
 
-COPY script/entrypoint.sh /entrypoint.sh
 COPY config/airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
+COPY script/entrypoint.sh /entrypoint.sh
 COPY files/trade_etanol_anidro.csv ${AIRFLOW_USER_HOME}/files/trade_etanol_anidro.csv
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}

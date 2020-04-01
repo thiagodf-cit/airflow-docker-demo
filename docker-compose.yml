@@ -1,9 +1,7 @@
-version: '3'
+version: "3"
 services:
-
     redis:
-        image: 'redis:5.0.5'
-    #     command: redis-server --requirepass redispass
+        image: redis:5.0.5
 
     postgres:
         image: postgres:9.6
@@ -12,22 +10,26 @@ services:
             - POSTGRES_PASSWORD=airflow
             - POSTGRES_DB=airflow
         ports:
-        - "5432:5432"
-        # Uncomment these lines to persist data on the local filesystem.
-        #     - PGDATA=/var/lib/postgresql/data/pgdata
-        # volumes:
-        #     - ./pgdata:/var/lib/postgresql/data/pgdata
-        
-    trade_db:
-        image: mcr.microsoft.com/mssql/server:2019-CU3-ubuntu-18.04
-        container_name: trade_db
+            - 5432:5432
+
+    trade_mysql:
+        image: mysql
+        command: --default-authentication-plugin=mysql_native_password
+        restart: always
         environment:
-          ACCEPT_EULA: "Y"
-          MYSQL_ROOT_PASSWORD: Airflow@12345!
-          SA_PASSWORD: Airflow@12345!
+            - MYSQL_ROOT_PASSWORD=trade
+            - MYSQL_ROOT_HOST=localhost
+            - MYSQL_DATABASE=trade
+            - MYSQL_USER=trade
+            - MYSQL_PASSWORD=trade
         ports:
-          - 1433:1433
-      
+            - 33060:33060
+    adminer:
+        image: adminer
+        restart: always
+        ports:
+            - 8082:8082
+
     webserver:
         image: airflow-docker
         restart: always
@@ -42,14 +44,12 @@ services:
             # - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
         volumes:
             - ./dags:/usr/local/airflow/dags
-            # - ./files:/usr/local/airflow/files/trade-etanol.csv
-            # Uncomment to include custom plugins
-            # - ./plugins:/usr/local/airflow/plugins
         ports:
             - "8080:8080"
         command: webserver
         healthcheck:
-            test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+            test:
+                ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
             interval: 30s
             timeout: 30s
             retries: 3

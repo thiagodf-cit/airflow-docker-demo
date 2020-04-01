@@ -1,0 +1,55 @@
+version: '3'
+services:
+
+    redis:
+        image: 'redis:5.0.5'
+    #     command: redis-server --requirepass redispass
+
+    postgres:
+        image: postgres:9.6
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        ports:
+        - "5432:5432"
+        # Uncomment these lines to persist data on the local filesystem.
+        #     - PGDATA=/var/lib/postgresql/data/pgdata
+        # volumes:
+        #     - ./pgdata:/var/lib/postgresql/data/pgdata
+        
+    trade_db:
+        image: mcr.microsoft.com/mssql/server:2019-CU3-ubuntu-18.04
+        container_name: trade_db
+        environment:
+          ACCEPT_EULA: "Y"
+          MYSQL_ROOT_PASSWORD: Airflow@12345!
+          SA_PASSWORD: Airflow@12345!
+        ports:
+          - 1433:1433
+      
+    webserver:
+        image: airflow-docker
+        restart: always
+        depends_on:
+            - postgres
+            - redis
+        environment:
+            - LOAD_EX=n
+            - EXECUTOR=Local
+            - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
+            # - EXECUTOR=Celery
+            # - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+        volumes:
+            - ./dags:/usr/local/airflow/dags
+            # - ./files:/usr/local/airflow/files/trade-etanol.csv
+            # Uncomment to include custom plugins
+            # - ./plugins:/usr/local/airflow/plugins
+        ports:
+            - "8080:8080"
+        command: webserver
+        healthcheck:
+            test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+            interval: 30s
+            timeout: 30s
+            retries: 3

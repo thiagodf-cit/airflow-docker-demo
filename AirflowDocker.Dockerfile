@@ -1,12 +1,8 @@
-# BUILD: docker build -f "./AirflowDocker.Dockerfile" -t "airflow-docker" .
-# RUN: docker-compose up
-
 FROM python:3.7-slim-buster
 
 # Never prompt the user for choices on installation/configuration of packages
 ENV DEBIAN_FRONTEND noninteractive
 ENV TERM linux
-
 
 # Airflow
 ARG AIRFLOW_VERSION="1.10.9"
@@ -75,7 +71,7 @@ RUN set -ex \
         /usr/share/doc-base
 
 COPY config/airflow.cfg ${AIRFLOW_USER_HOME}/airflow.cfg
-COPY script/entrypoint.sh /entrypoint.sh
+COPY script/airflow-docker-entrypoint.sh /usr/local/bin/
 COPY files/trade_etanol_anidro.csv ${AIRFLOW_USER_HOME}/files/trade_etanol_anidro.csv
 
 RUN chown -R airflow: ${AIRFLOW_USER_HOME}
@@ -84,5 +80,5 @@ EXPOSE 8080 5555 8793
 
 USER airflow
 WORKDIR ${AIRFLOW_USER_HOME}
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["airflow-docker-entrypoint.sh"]
 CMD ["webserver"]

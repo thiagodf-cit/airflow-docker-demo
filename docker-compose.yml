@@ -1,7 +1,9 @@
-version: "3"
+version: "3.1"
 services:
     redis:
         image: redis:5.0.5
+        networks:
+            - db-network
 
     postgres:
         image: postgres:9.6
@@ -11,25 +13,28 @@ services:
             - POSTGRES_DB=airflow
         ports:
             - 5432:5432
+        networks:
+            - db-network
 
-    trade_mysql:
-        image: mysql
-        command: --default-authentication-plugin=mysql_native_password
-        restart: always
-        environment:
-            - MYSQL_ROOT_PASSWORD=trade
-            - MYSQL_ROOT_HOST=localhost
-            - MYSQL_DATABASE=trade
-            - MYSQL_USER=trade
-            - MYSQL_PASSWORD=trade
-        ports:
-            - 33060:33060
     adminer:
         image: adminer
-        restart: always
         ports:
-            - 8082:8082
-
+          - 8080:8080
+        networks:
+          - db-network
+      
+    trade-mysql:
+        image: mysql-docker
+        command: --default-authentication-plugin=mysql_native_password
+        restart: always
+        environment: 
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: trade
+        ports: 
+            - 3306:3306
+        networks:
+            - db-network
+            
     webserver:
         image: airflow-docker
         restart: always
@@ -44,8 +49,9 @@ services:
             # - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
         volumes:
             - ./dags:/usr/local/airflow/dags
+            - ./files:/usr/local/airflow/files
         ports:
-            - "8080:8080"
+            - "8081:8081"
         command: webserver
         healthcheck:
             test:
@@ -53,3 +59,9 @@ services:
             interval: 30s
             timeout: 30s
             retries: 3
+        networks:
+            - db-network
+
+networks: 
+  db-network:
+    driver: bridge

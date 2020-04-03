@@ -1,0 +1,6 @@
+{
+    "trade_etanol_variables": {
+        "dag_name": "trade_etanol_anidro",
+        "dag_describ": "A DAG for Trade Etanol Anidro"
+    }
+}

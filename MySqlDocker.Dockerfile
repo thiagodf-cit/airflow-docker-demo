@@ -68,9 +68,10 @@ RUN { \
 
 VOLUME /var/lib/mysql
 # Config files
-COPY sql/config/ /etc/mysql/
+COPY mysql/config/ /etc/mysql/
 COPY script/mysql-docker-entrypoint.sh /usr/local/bin/
-RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
+COPY mysql/sql /docker-entrypoint-initdb.d/
+RUN ln -s usr/local/bin/mysql-docker-entrypoint.sh /entrypoint.sh # backwards compat
 ENTRYPOINT ["mysql-docker-entrypoint.sh"]
 
 EXPOSE 3306 33060

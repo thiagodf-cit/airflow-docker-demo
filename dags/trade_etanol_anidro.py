@@ -2,6 +2,7 @@
 # Load The Dependencies
 # --------------------------------------------------------------------------------
 import json
+import csv
 import airflow
 import pandas as pd
 from airflow import DAG
@@ -9,95 +10,106 @@ from airflow.models import Variable
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
-from airflow.operators.hive_operator import HiveOperator
-from airflow.contrib.sensors.file_sensor import FileSensor
-from datetime import date, timedelta, datetime
+from airflow.hooks.mysql_hook import MySqlHook
+from datetime import datetime, timedelta
 
 # --------------------------------------------------------------------------------
-# Load The Scripts and Variables
+# Load The Variables
 # --------------------------------------------------------------------------------
-import format_csv
+var_config = Variable.get("trade_etanol_variables", deserialize_json=True)
+dag_name = var_config["dag_name"]
+dag_describ = var_config["dag_describ"]
+local_path = '/usr/local/airflow/files/'
+file_name = 'trade_etanol_anidro'
+local_path_formated = '/usr/local/airflow/files/formated/'
+ext = '.csv'
+file_path = local_path + file_name + ext
+encoding = 'utf-8'
 
-VAR_CONFIG = Variable.get("trade_etanol_variables", deserialize_json=True)
-DAG_NAME = VAR_CONFIG["dag_name"]
-DAG_DESCRIB = VAR_CONFIG["dag_describ"]
-TEMP_DIR = '/tmp/'
-LOCAL_PATH = '/usr/local/airflow/files/'
-FILE_NAME = 'trade_etanol_anidro.csv'
-LOCAL_PATH_FORMATED = '/usr/local/airflow/files/formated/'
-FILE_FORMATED = 'trade_etanol_anidro_formated.csv'
+def load_file_original():
+    print("Load File Name: " + file_name)
+    file_original = pd.read_csv(local_path + file_name + ext, header=None)
+    print(file_original)
+    
+def formating_file(**kwargs):
+    print("Formating File Name: " + file_name)
+    format_in = str(kwargs['execution_date'].day) + str(kwargs['execution_date'].month) + str(kwargs['execution_date'].year)
+    file_formated = file_name + '_' + format_in + ext
+    
+    file_csv = pd.read_csv(
+        file_path,
+        sep=';',
+        decimal='.',
+        encoding=encoding,
+        parse_dates=['date_trade'],
+        header=None,
+        names=['date_trade',
+               'value_per_liter_brl',
+               'value_per_liter_usd',
+               'weekly_variation'])
 
-
-def print_inform():
-    file_read = pd.read_csv(LOCAL_PATH_FORMATED + FILE_FORMATED)
-    print("Load File Name: trade_etanol_anidro_formated \n" + file_read)
+    file_csv.to_csv( local_path_formated + file_formated, index=False)
+    file_formated_path = local_path_formated + file_formated
+    file_formated = pd.read_csv(file_formated_path)
+    print(file_formated)
+    return file_formated_path
+    
+def insert_in_db(**kwargs):
+    print("Insert data in db etanol: ")
+    file_formated_path = kwargs['ti'].xcom_pull(task_ids='formating_file')
+    file_formated = pd.read_csv(file_formated_path, header=None)
+    print(file_formated)
+    
+    tb_db = 'etanol'
+    conn = MySqlHook(conn_name_attr = 'mysql_conn_id', mysql_conn_id='trade-mysql')
+    conn.bulk_load(tb_db, file_formated_path)
+    return tb_db
     
 # --------------------------------------------------------------------------------
 # Init the DAG
 # --------------------------------------------------------------------------------
-DAG_DEFAULT_ARGS = {
+default_args = {
     'owner': 'thiagodf',
     'depends_on_past': False,
-    'start_date': datetime(2020, 4, 1),
+    'start_date': datetime(2015, 12, 1),
     'email': ['thiagodf@ciandt.com'],
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retries': 5,
+    'retry_delay': timedelta(minutes=15),
 }
 
 with DAG(
-    DAG_NAME,
-    default_args=DAG_DEFAULT_ARGS,
+    dag_name,
+    default_args=default_args,
     schedule_interval=timedelta(minutes=10),
-    tags=[DAG_NAME],
-    description=DAG_DESCRIB,
-    catchup=False,
+    tags=[dag_name],
+    description=dag_describ,
+    catchup=False
 ) as dag:
 
     start_dag = DummyOperator(task_id='start_dag')
-            
-    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro waiting_file_original 2020-04-02
-    # verifica se existe o arquivo original
-    waiting_file_original = FileSensor(
-        task_id="waiting_file_original",
-        fs_conn_id="fs_default",
-        filepath=LOCAL_PATH + FILE_NAME,
-        poke_interval=5)
-    
-    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro execute_file_original 2020-04-02
+        
+    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro load_file_original 2020-03-29
+    # exibe no log arquivo original
+    load_file_original = PythonOperator(
+        task_id="load_file_original",
+        python_callable=load_file_original)
+      
+    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro formating_file 2020-03-29
     # pega o arquivo original e formata ele
-    execute_file_original = PythonOperator(
-        task_id="execute_file_original",
-        python_callable=format_csv.main)
-    
-    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro waiting_file_formated 2020-04-02
-    # verifica se existe o arquivo formatado
-    waiting_file_formated = FileSensor(
-        task_id="waiting_file_formated",
-        fs_conn_id="fs_default",
-        filepath=TEMP_DIR + FILE_FORMATED,
-        poke_interval=5)
-    
-    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro move_file_formated 2020-04-02
-    # move o arquivo formatado para a pasta de formatado
-    move_file_formated = BashOperator(
-        task_id="move_file_formated",
-        bash_command="hadoop fs -put -f {0} {1}".format(TEMP_DIR + FILE_FORMATED, LOCAL_PATH_FORMATED + FILE_FORMATED))
-    
-    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro load_file_formated 2020-04-02
-    # carrega o arquivo formatado e da um print no log
-    load_file_formated = PythonOperator(
-        task_id="load_file_formated",
-        python_callable=print_inform,
+    formating_file = PythonOperator(
+        task_id="formating_file",
+        python_callable=formating_file,
         provide_context=True)
     
-    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro transfer_into_hive 2020-04-02
-    # 
-    transfer_into_hive = HiveOperator(
-        task_id="transfer_into_hive",
-        hql="LOAD DATA IN PATH '/tmp/trade_etanol_anidro_formated.csv' INTO TABLE etanol")
+    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro insert_in_db 2020-03-29
+    # pega o arquivo formatado e salva os dados no db
+    insert_in_db = PythonOperator(
+        task_id="insert_in_db",
+        python_callable=insert_in_db,
+        provide_context=True)
         
     end_dag = DummyOperator(task_id='end_dag')
-    
-start_dag >> waiting_file_original >> execute_file_original >> waiting_file_formated >> [move_file_formated, load_file_formated] >> transfer_into_hive >> end_dag
+
+start_dag >> load_file_original >> formating_file >> insert_in_db >> end_dag

@@ -1,10 +1,5 @@
 version: "3.1"
 services:
-    redis:
-        image: redis:5.0.5
-        networks:
-            - db-network
-
     postgres:
         image: postgres:9.6
         environment:
@@ -14,14 +9,14 @@ services:
         ports:
             - 5432:5432
         networks:
-            - db-network
+            - airflow-network
 
     adminer:
         image: adminer
         ports:
           - 8080:8080
         networks:
-          - db-network
+          - airflow-network
       
     trade-mysql:
         image: mysql-docker
@@ -33,20 +28,17 @@ services:
         ports: 
             - 3306:3306
         networks:
-            - db-network
+            - airflow-network
             
     webserver:
         image: airflow-docker
         restart: always
         depends_on:
             - postgres
-            - redis
         environment:
             - LOAD_EX=n
             - EXECUTOR=Local
             - FERNET_KEY=jsDPRErfv8Z_eVTnGfF8ywd19j4pyqE3NpdUBA_oRTo=
-            # - EXECUTOR=Celery
-            # - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
         volumes:
             - ./dags:/usr/local/airflow/dags
             - ./files:/usr/local/airflow/files
@@ -60,8 +52,8 @@ services:
             timeout: 30s
             retries: 3
         networks:
-            - db-network
+            - airflow-network
 
 networks: 
-  db-network:
+  airflow-network:
     driver: bridge

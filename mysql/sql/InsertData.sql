@@ -1,0 +1,1 @@
+INSERT INTO trade.etanol_anidro (ref_date, value_per_liter_brl, value_per_liter_usd, weekly_variation) VALUES ('20/03/2020', '2.02', '0.3979', '-6.20');

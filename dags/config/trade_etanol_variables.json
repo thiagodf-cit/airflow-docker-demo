@@ -1,6 +1,17 @@
 {
     "trade_etanol_variables": {
         "dag_name": "trade_etanol_anidro",
-        "dag_describ": "A DAG for Trade Etanol Anidro"
+        "dag_describ": "A DAG for Trade Etanol Anidro",
+        "local_path": "/usr/local/airflow/files/",
+        "local_path_formated": "/usr/local/airflow/files/formated/",
+        "file_name": "trade_etanol_anidro",
+        "ext": ".csv",
+        "encoding": "utf-8",
+        "db_user": "root",
+        "db_pw": "root",
+        "db_sv": "trade-mysql",
+        "db_port": 3306,
+        "db_name": "trade",
+        "db_table": "etanol_anidro"
     }
 }

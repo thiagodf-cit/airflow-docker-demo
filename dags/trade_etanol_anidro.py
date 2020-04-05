@@ -7,6 +7,7 @@ import airflow
 import pandas as pd
 from airflow import DAG
 from airflow.models import Variable
+from sqlalchemy import create_engine
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
@@ -19,18 +20,31 @@ from datetime import datetime, timedelta
 var_config = Variable.get("trade_etanol_variables", deserialize_json=True)
 dag_name = var_config["dag_name"]
 dag_describ = var_config["dag_describ"]
-local_path = '/usr/local/airflow/files/'
-file_name = 'trade_etanol_anidro'
-local_path_formated = '/usr/local/airflow/files/formated/'
-ext = '.csv'
-file_path = local_path + file_name + ext
-encoding = 'utf-8'
+local_path = var_config["local_path"]
+local_path_formated = var_config["local_path_formated"]
+file_name = var_config["file_name"]
+ext =  var_config["ext"]
+encoding = var_config["encoding"]
+db_user = var_config["db_user"]
+db_pw = var_config["db_pw"]
+db_sv = var_config["db_sv"]
+db_port = var_config["db_port"] 
+db_name = var_config["db_name"]
+db_table = var_config["db_table"]
 
+file_path = local_path + file_name + ext
+
+# --------------------------------------------------------------------------------
+# Create Defs
+# --------------------------------------------------------------------------------
+
+# exibe no log arquivo original
 def load_file_original():
     print("Load File Name: " + file_name)
     file_original = pd.read_csv(local_path + file_name + ext, header=None)
     print(file_original)
-    
+
+# pega o arquivo original e formata ele
 def formating_file(**kwargs):
     print("Formating File Name: " + file_name)
     format_in = str(kwargs['execution_date'].day) + str(kwargs['execution_date'].month) + str(kwargs['execution_date'].year)
@@ -53,25 +67,25 @@ def formating_file(**kwargs):
     file_formated = pd.read_csv(file_formated_path)
     print(file_formated)
     return file_formated_path
-    
+ 
+# pega o arquivo formatado e salva os dados no db
 def insert_in_db(db_table_name, **kwargs):
-    print("Insert data in db etanol....\n")
-
-    from sqlalchemy import create_engine
-    mysql_engine = create_engine('mysql://{0}:{1}@{2}:{3}/{4}'.format('root', 'root', 'trade-mysql', '3306', 'trade'))
-    # existing_databases = mysql_engine.execute("SHOW DATABASES;")
-    # print(existing_databases)
-    
+    print("Connecting in db....")
+    mysql_engine = create_engine('mysql://{0}:{1}@{2}:{3}/{4}'.format(db_user, db_pw, db_sv, db_port, db_name))
+    print("Insert data in db....\n")
     file_formated_path = kwargs['ti'].xcom_pull(task_ids='formating_file')
     file_formated = pd.read_csv(file_formated_path)
     file_formated.to_sql(db_table_name, mysql_engine, if_exists='append', index=False)
-    print(file_formated)
     
     # tb_db = 'etanol_anidro'
     # conn = MySqlHook(conn_name_attr = 'mysql_conn_id', mysql_conn_id='trade-mysql')
     # conn.bulk_load(tb_db, file_formated_path)
     # return tb_db
-    
+
+# apaga o arquivo formatado
+
+# faz uma consulta no db e retorna o dados
+
 # --------------------------------------------------------------------------------
 # Init the DAG
 # --------------------------------------------------------------------------------
@@ -116,7 +130,7 @@ with DAG(
         task_id="insert_in_db",
         provide_context=True,
         python_callable=insert_in_db,
-        op_kwargs={ 'db_table_name': 'etanol_anidro' })
+        op_kwargs={ 'db_table_name': db_table })
     
     # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro insert_in_db 2020-03-29
     # apaga o arquivo formatado

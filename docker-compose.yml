@@ -20,11 +20,13 @@ services:
       
     trade-mysql:
         image: mysql-docker
-        command: --default-authentication-plugin=mysql_native_password
+        command: --default-authentication-plugin=mysql_native_password --local-infile=1
         restart: always
         environment: 
             MYSQL_ROOT_PASSWORD: root
             MYSQL_DATABASE: trade
+        volumes: 
+            - ./mysql/sql:/docker-entrypoint-initdb.d/
         ports: 
             - 3306:3306
         networks:

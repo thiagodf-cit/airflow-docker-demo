@@ -60,7 +60,7 @@ def insert_in_db(**kwargs):
     file_formated = pd.read_csv(file_formated_path, header=None)
     print(file_formated)
     
-    tb_db = 'etanol'
+    tb_db = 'etanol_anidro'
     conn = MySqlHook(conn_name_attr = 'mysql_conn_id', mysql_conn_id='trade-mysql')
     conn.bulk_load(tb_db, file_formated_path)
     return tb_db
@@ -109,7 +109,10 @@ with DAG(
         task_id="insert_in_db",
         python_callable=insert_in_db,
         provide_context=True)
-        
+    
+    # Test => docker-compose -f docker-compose.yml run --rm webserver airflow test trade_etanol_anidro insert_in_db 2020-03-29
+    # apaga o arquivo formatado
+    
     end_dag = DummyOperator(task_id='end_dag')
 
 start_dag >> load_file_original >> formating_file >> insert_in_db >> end_dag

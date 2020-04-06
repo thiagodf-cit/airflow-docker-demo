@@ -9,7 +9,6 @@ from airflow import DAG
 from airflow.models import Variable
 from sqlalchemy import create_engine
 from airflow.operators.dummy_operator import DummyOperator
-from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
 from datetime import datetime, timedelta
 
@@ -90,12 +89,12 @@ def select_data_etanol(mysql_engine, db_table_name, **kwargs):
 default_args = {
     'owner': 'thiagodf',
     'depends_on_past': False,
-    'start_date': datetime(2015, 12, 1),
+    'start_date': datetime(2020, 4, 6),
     'email': ['thiagodf@ciandt.com'],
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=15),
+    'retry_delay': timedelta(minutes=20),
 }
 
 with DAG(

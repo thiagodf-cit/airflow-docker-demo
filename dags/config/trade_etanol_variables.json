@@ -3,7 +3,7 @@
         "dag_name": "trade_etanol_anidro",
         "dag_describ": "A DAG for Trade Etanol Anidro",
         "local_path": "/usr/local/airflow/files/",
-        "local_path_formated": "/usr/local/airflow/files/formated/",
+        "local_tmp": "/tmp/",
         "file_name": "trade_etanol_anidro",
         "ext": ".csv",
         "encoding": "utf-8",

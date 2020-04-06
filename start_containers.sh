@@ -1,7 +1,7 @@
 #!/bin/bash
 docker-compose -f docker-compose.yml up
 
-# docker-compose exec webserver airflow variables -i dags/config/trade_etanol_variables.json
+# airflow variables -i "/Users/thiagodf/curso/airflow-docker-demo/dags/config/trade_etanol_variables.json"
 
 # docker-compose exec webserver airflow connections -a \
 # --conn_id 'trade-mysql'\

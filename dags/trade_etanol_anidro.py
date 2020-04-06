@@ -74,7 +74,7 @@ def insert_in_db(mysql_engine, db_table_name, **kwargs):
     print("Insert data in db....\n")
     file_formated_path = kwargs['ti'].xcom_pull(task_ids='formating_file')
     file_formated = pd.read_csv(file_formated_path)
-    file_formated.to_sql(db_table_name, mysql_engine, if_exists='replace', index=False)
+    file_formated.to_sql(db_table_name, mysql_engine, if_exists='replace', index_label='id')
 
 # faz uma consulta no db e retorna o dados
 def select_data_etanol(mysql_engine, db_table_name, **kwargs):
@@ -94,7 +94,7 @@ default_args = {
     'email': ['thiagodf@ciandt.com'],
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 5,
+    'retries': 1,
     'retry_delay': timedelta(minutes=15),
 }
 
